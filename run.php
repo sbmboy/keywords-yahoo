@@ -12,20 +12,24 @@ echo "/**
 if(!file_exists('keywords.db3')){
   $inputopen = true;
 }else{
-  fwrite(STDOUT,"选择功能（1.输入关键词或文档路径 2.直接运行拓展程序 3.导出关键词到TXT）：");
-  if(trim(fgets(STDIN))=='1'){
+  echo "1.输入关键词或文档路径\n2.直接运行拓展程序\n3.导出关键词到TXT\n";
+  fwrite(STDOUT,"请选择：");
+  $check=trim(fgets(STDIN));
+  if($check=='1'){
     $inputopen = true;
+	  $outputopen = false;
+  }elseif($check=='2'){
+    $inputopen = false;
     $outputopen = false;
-  }elseif(trim(fgets(STDIN))=='2'){
+  }elseif($check=='3'){
     $inputopen = false;
     $outputopen = true;
-  }elseif(trim(fgets(STDIN))=='3'){
-    $inputopen = false;
-    $outputopen = false;
+  }else{
+    die("输入错误！");
   }
 }
 
- //1. 添加关键词
+//1. 添加关键词
 if($inputopen){
   fwrite(STDOUT,"输入关键词或文档路径：");
   $input = trim(fgets(STDIN));
@@ -56,17 +60,35 @@ if($inputopen){
   $db->exec("end transaction");
   $db->close(); // close datebase
   echo "创建数据库keywords.db3成功\n添加核心关键词{$count}个\n";
+  echo "拓展程序将再5秒后执行，如需终止，请按ctrl+c\n";
+  for($i=5;$i>0;$i--){
+    sleep(1);
+    echo "{$i}\n";
+  }
 }
 // 3.导出关键词
-$db=new SQLite3('keywords.db3',SQLITE3_OPEN_READWRITE);
-$sql="select rowid,keywords,grade,length from allkeywords where status = 'pending' ORDER by length ASC limit 0,1"; // 获取最短的一条记录
-$post=$db->querySingle($sql,true); // 获取 rowid,keywords,who,grade
-
-
-
+if($outputopen){
+  $db=new SQLite3('keywords.db3',SQLITE3_OPEN_READONLY);
+  $sql="select keywords,grade,length,source from allkeywords"; // 获取最短的一条记录
+  $result=$db->query($sql);
+  $outputstr = "关键词\t长度\t搜索词\t深度\n";
+  $jsq=0;
+  while($row=$result->fetchArray(SQLITE3_ASSOC)){
+    $outputstr.= $row['keywords']."\t".$row['length']."\t".$row['source']."\t".$row['grade']."\n";
+    $jsq++;
+  }
+  $db->close(); // close datebase
+  file_put_contents("output.txt",$outputstr);
+  echo "成功导出{$jsq}关键词到文件output.txt\n";
+  echo "拓展程序将再10秒后执行，如需终止，请按ctrl+c\n";
+  for($i=10;$i>0;$i--){
+    sleep(1);
+    echo "{$i}\n";
+  }
+}
 
 // 执行自动采集任务
-echo "程序开始执行，直到所有数据全部跑完。\n如果想中途停止，请按ctrl+C\n";
+echo "拓展程序开始执行，直到所有数据全部跑完。\n如果想中途停止，请按ctrl+C\n";
 $arrContextOptions=array(
   "ssl"=>array(
     "verify_peer"=>false,
@@ -79,44 +101,47 @@ $arrContextOptions=array(
 );
 $words = array(""," a"," b"," c"," d"," e"," f"," g"," h"," i"," j"," k"," l"," m"," n"," o"," p"," q"," r"," s"," t"," u"," v"," w"," x"," y"," z");
 while(true){
-  $db=new SQLite3('keywords.db3',SQLITE3_OPEN_READWRITE);
+  $db=new SQLite3('keywords.db3',SQLITE3_OPEN_READONLY);
   $sql="select rowid,keywords,grade,length from allkeywords where status = 'pending' ORDER by length ASC limit 0,1"; // 获取最短的一条记录
-  $post=$db->querySingle($sql,true); // 获取 rowid,keywords,who,grade
+  $post=$db->querySingle($sql,true); // 获取 rowid,keywords,grade
+  $db->close();
   if(isset($post['keywords'])){
+	$db=new SQLite3('keywords.db3',SQLITE3_OPEN_READWRITE);
+	$db->exec("begin exclusive transaction");
     foreach($words as $word){
+	  echo date("H:i:s").'|_'.$keyword.$word."\n";
       $url = "https://search.yahoo.com/sugg/gossip/gossip-us-ura/?command=".urlencode($post['keywords'].$word); // 抓取Yahoo数据
       $content = file_get_contents($url, 0, stream_context_create($arrContextOptions));
-      unset($url);
       preg_match_all("<s k=\"(.*)\" m=\"\d+\"\/>",$content,$keywords); // 正则匹配内容，获取关键词
-      unset($content);
       if(count($keywords[1])>0){
-        echo date("Y-m-d H:i:s").'|_'.$post['keywords']."\n";
-      	$db->exec("begin exclusive transaction");
       	foreach($keywords[1] as $keyword){
       		$keyword = trim($keyword);
       		$length = substr_count($keyword,' ')+1;
       		$sql="insert into allkeywords values ('".$db->escapeString($keyword)."',{$length},'{$post['keywords']}',".time().",".($post['grade']+1).",'pending')";
       		@$db->exec($sql);
-          echo date("Y-m-d H:i:s").' |_'.$keyword."\n";
+			echo date("H:i:s").' |_'.$keyword."\n";
       	}
-      	$db->exec("end transaction");
-      	unset($keywords);
-        sleep(6); //休息6秒，设置太短会被封
       }
-      // else{
-      //   $sql = "UPDATE allkeywords SET length = ".($post['length']+1)." WHERE rowid = {$post['rowid']}";
-  		//   @$db->exec($sql);
-      // }
+  	  echo "暂停5秒...\n";
+      for($i=5;$i>0;$i--){
+        sleep(1);
+        echo "{$i}\n";
+      }
     }
     // 更新源关键词
     $sql = "UPDATE allkeywords SET status = 'completed' WHERE rowid = {$post['rowid']}";
     @$db->exec($sql);
-    unset($post);
-    unset($sql);
+  	$db->exec("end transaction");
+  	$db->close();
+  	echo date("H:i:s").'|_'.$post['keywords']."完成..\n";
+  	echo "暂停5秒...\n";
+    for($i=5;$i>0;$i--){
+      sleep(1);
+      echo "{$i}\n";
+    }
   }else{
-    die("全部完成");
+    die("数据库中无待扩展关键词，请检查！");
   }
-  $db->close();
 }
 /*
  * create database
