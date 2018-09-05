@@ -63,7 +63,7 @@ if($inputopen){
   echo "拓展程序将再5秒后执行，如需终止，请按ctrl+c\n";
   for($i=5;$i>0;$i--){
     sleep(1);
-    echo "{$i}\n";
+    echo "{$i}...";
   }
 }
 // 3.导出关键词
@@ -83,8 +83,9 @@ if($outputopen){
   echo "拓展程序将再10秒后执行，如需终止，请按ctrl+c\n";
   for($i=10;$i>0;$i--){
     sleep(1);
-    echo "{$i}\n";
+    echo "{$i}...";
   }
+  echo "\n";
 }
 
 // 执行自动采集任务
@@ -109,7 +110,7 @@ while(true){
 	$db=new SQLite3('keywords.db3',SQLITE3_OPEN_READWRITE);
 	$db->exec("begin exclusive transaction");
     foreach($words as $word){
-	  echo date("H:i:s").'|_'.$keyword.$word."\n";
+	  echo date("H:i:s").'|_'.$post['keywords'].$word."\n";
       $url = "https://search.yahoo.com/sugg/gossip/gossip-us-ura/?command=".urlencode($post['keywords'].$word); // 抓取Yahoo数据
       $content = file_get_contents($url, 0, stream_context_create($arrContextOptions));
       preg_match_all("<s k=\"(.*)\" m=\"\d+\"\/>",$content,$keywords); // 正则匹配内容，获取关键词
@@ -117,16 +118,17 @@ while(true){
       	foreach($keywords[1] as $keyword){
       		$keyword = trim($keyword);
       		$length = substr_count($keyword,' ')+1;
-      		$sql="insert into allkeywords values ('".$db->escapeString($keyword)."',{$length},'{$post['keywords']}',".time().",".($post['grade']+1).",'pending')";
+      		$sql="insert into allkeywords values ('".$db->escapeString($keyword)."',{$length},'".$post['keywords'].$word."',".time().",".($post['grade']+1).",'pending')";
       		@$db->exec($sql);
 			echo date("H:i:s").' |_'.$keyword."\n";
       	}
       }
-  	  echo "暂停5秒...\n";
+  	  echo "暂停5秒...";
       for($i=5;$i>0;$i--){
         sleep(1);
-        echo "{$i}\n";
+        echo "{$i}...";
       }
+	  echo "\n";
     }
     // 更新源关键词
     $sql = "UPDATE allkeywords SET status = 'completed' WHERE rowid = {$post['rowid']}";
@@ -134,11 +136,12 @@ while(true){
   	$db->exec("end transaction");
   	$db->close();
   	echo date("H:i:s").'|_'.$post['keywords']."完成..\n";
-  	echo "暂停5秒...\n";
+  	echo "暂停5秒...";
     for($i=5;$i>0;$i--){
       sleep(1);
-      echo "{$i}\n";
+      echo "{$i}...";
     }
+	echo "\n";
   }else{
     die("数据库中无待扩展关键词，请检查！");
   }
