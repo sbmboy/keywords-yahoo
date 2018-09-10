@@ -124,10 +124,10 @@ while(true){
           if($re>0){
             echo '拓展词: '.$keyword."已存在，跳过\n";
           }else{
-            exec('Chrome https://www.google.com/search?q='.urlencode($keyword)); //web
-            exec('Chrome https://translate.google.cn/#auto/zh-CN/'.rawurlencode($keyword)); //翻译
-
-            echo '拓展词: '.$keyword."  ";
+            exec('Chrome www.google.com/search?q='.urlencode($keyword).'"&"tbm=isch'); //Image
+            // exec('Chrome https://www.google.com/search?q='.urlencode($keyword)); //Web
+            // exec('Chrome https://translate.google.cn/#auto/zh-CN/'.rawurlencode($keyword)); //翻译
+            echo '拓展词: '.$keyword."   ";
             fwrite(STDOUT,"是否保留[y/n](默认y)：");
             $switch = strtolower(trim(fgets(STDIN)));
             if($switch=='n'||$switch=='no'){
