@@ -128,18 +128,18 @@ while(true){
             // exec('Chrome https://www.google.com/search?q='.urlencode($keyword)); //Web
             // exec('Chrome https://translate.google.cn/#auto/zh-CN/'.rawurlencode($keyword)); //翻译
             echo '拓展词: '.$keyword."   ";
-            fwrite(STDOUT,"是否保留[y/n](默认y)：");
+            fwrite(STDOUT,"是否保留[y/n](默认n)：");
             $switch = strtolower(trim(fgets(STDIN)));
-            if($switch=='n'||$switch=='no'){
-              $length = substr_count($keyword,' ')+1;
-          		$sql="insert into allkeywords values ('".$db->escapeString($keyword)."',{$length},'".$post['keywords'].$word."',".time().",".($post['grade']+1).",'trash')";
-              @$db->exec($sql);
-              // echo $keyword."舍弃\n";
-            }else{
+            if($switch=='y'||$switch=='yes'){
               $length = substr_count($keyword,' ')+1;
           		$sql="insert into allkeywords values ('".$db->escapeString($keyword)."',{$length},'".$post['keywords'].$word."',".time().",".($post['grade']+1).",'pending')";
           		@$db->exec($sql);
               // echo $keyword."保留\n";
+            }else{
+              $length = substr_count($keyword,' ')+1;
+          		$sql="insert into allkeywords values ('".$db->escapeString($keyword)."',{$length},'".$post['keywords'].$word."',".time().",".($post['grade']+1).",'trash')";
+              @$db->exec($sql);
+              // echo $keyword."舍弃\n";
             }
           }
       	}
